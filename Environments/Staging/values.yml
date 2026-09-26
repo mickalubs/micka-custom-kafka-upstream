@@ -1,0 +1,145 @@
+# ----------------------------- Cluster -----------------------------
+cluster:
+  name: cluster.staging
+# ----------------------------- Service Accounts -----------------------------
+service_account:
+  kafka:
+    name: kafka-test
+# ----------------------------- Local PATH -----------------------------
+# Local PATH
+local_path_storage:
+  namespace:
+    name: local-path-storage
+  role:
+    name: local-path-provisioner-role
+    rules:
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["get", "list", "watch", "create", "patch", "update", "delete"]
+
+  cluster_role:
+    rules:
+      - apiGroups: [""]
+        resources: ["nodes", "persistentvolumeclaims", "configmaps", "pods", "pods/log"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: [""]
+        resources: ["persistentvolumes"]
+        verbs: ["get", "list", "watch", "create", "patch", "update", "delete"]
+      - apiGroups: [""]
+        resources: ["events"]
+        verbs: ["create", "patch"]
+      - apiGroups: ["storage.k8s.io"]
+        resources: ["storageclasses"]
+        verbs: ["get", "list", "watch"]
+
+  service_account:
+    name: local-path-provisioner-service-account
+
+  role_binding:
+    name: local-path-provisioner-bind
+
+  deployment:
+    name: local-path-provisioner
+
+  image:
+    name: docker.io/rancher/local-path-provisioner
+    version: v0.0.36
+    imagePullPolicy: IfNotPresent
+
+  volumes:
+    conf_vol:
+      name: config-volume 
+# -----------------------------------------------------
+  storage_class:
+    name: local-path
+    provisioner: rancher.io/local-path
+    volumeBindingMode: WaitForFirstConsumer
+    reclaimPolicy: Delete
+# -----------------------------------------------------
+  config_map:
+    name: local-path-config
+# ======================================== Kafka ========================================
+kafka:
+  namespace:
+    name: kafka
+
+  labels:
+    name: kafka
+    deployment: kafka
+
+  headless_service:
+    name: kafka-headless
+
+  port:
+    external:
+      name: kafka-external
+      port: 9092
+    internal:
+      name: kafka-internal
+      port: 29092
+
+  bootstrap:
+    name: kafka-bootstrap
+
+  configmap:
+    name: kafka-config
+
+  statefulset:
+    name: kafka
+    replicas: 3
+    updateStrategy: RollingUpdate
+    podManagementPolicy: OrderedReady
+    initContainers:
+      image: 
+        name: busybox
+        version: 1.35
+
+  container:
+    name: kafka
+    image: 
+      name: confluentinc/cp-kafka
+      version: 7.5.0
+# ======================================== Zookeeper ========================================
+zookeeper:
+  name: zookeeper
+  image: 
+    name: confluentinc/cp-zookeeper
+    version: 7.5.0
+
+  headless_service:
+    name: zookeeper-headless
+
+  labels:
+    name: zookeeper
+    deployment: kafka
+
+  port:
+    client: 2181
+    follower: 2888
+    election: 3888
+
+  client_service:
+    name: zookeeper-client
+
+  statefulset:
+    name: zookeeper
+    replicas: 3
+    updateStrategy: RollingUpdate
+    podManagementPolicy: Parallel
+# ======================================== PodDisruptionBudget ========================================
+pod_disruption_budget:
+  zookeeper:
+    name: zookeeper-pdb
+    specs:
+      minAvailable: 2
+
+  kafka:
+    name: kafka-pdb
+    specs:
+      minAvailable: 2
+# ======================================== Test ========================================
+test_pod:
+  name: kafka-producer
+  image:
+    name: confluentinc/cp-kafka
+    version: 7.5.0

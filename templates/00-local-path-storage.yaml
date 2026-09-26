@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{.Values.local_path_storage.namespace.name }}
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{.Values.local_path_storage.service_account.name}}
+  namespace: {{.Values.local_path_storage.namespace.name }}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Values.local_path_storage.role.name}}
+  namespace: {{ .Values.local_path_storage.namespace.name }}
+rules:
+  {{- toYaml .Values.local_path_storage.role.rules | nindent 2}}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.local_path_storage.role.name}}
+rules:
+  {{- toYaml .Values.local_path_storage.cluster_role.rules | nindent 2}}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{.Values.local_path_storage.role_binding.name}}
+  namespace: {{.Values.local_path_storage.namespace.name}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{.Values.local_path_storage.role.name}}
+subjects:
+  - kind: ServiceAccount
+    name: {{.Values.local_path_storage.service_account.name}}
+    namespace: {{.Values.local_path_storage.namespace.name}}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{.Values.local_path_storage.role_binding.name}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.local_path_storage.role.name}}
+subjects:
+  - kind: ServiceAccount
+    name: {{.Values.local_path_storage.service_account.name}}
+    namespace: {{ .Values.local_path_storage.namespace.name }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Values.local_path_storage.deployment.name}}
+  namespace: {{ .Values.local_path_storage.namespace.name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{.Values.local_path_storage.deployment.name}}
+  template:
+    metadata:
+      labels:
+        app: {{.Values.local_path_storage.deployment.name}}
+    spec:
+      serviceAccountName: {{.Values.local_path_storage.service_account.name}}
+      containers:
+        {{- include "local_path_storage.containers" . | nindent 8 }}
+      volumes:
+        - name: {{.Values.local_path_storage.volumes.conf_vol.name}}
+          configMap:
+            name: {{.Values.local_path_storage.config_map.name}}
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{.Values.local_path_storage.storage_class.name}}
+provisioner: {{.Values.local_path_storage.storage_class.provisioner}}
+volumeBindingMode: {{.Values.local_path_storage.storage_class.volumeBindingMode}}
+reclaimPolicy: {{.Values.local_path_storage.storage_class.reclaimPolicy}}
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: local-path-config
+  namespace: {{ .Values.local_path_storage.namespace.name }}
+data:
+{{- include "local_path_storage.configmap" . | nindent 2}}

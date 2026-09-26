@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Values.kafka.headless_service.name}}
+  namespace: {{.Values.kafka.namespace.name}}
+spec:
+  clusterIP: None
+  selector:
+    app: {{.Values.kafka.labels.name}}
+  ports:
+    - name: {{.Values.kafka.port.external.name}}
+      port: {{.Values.kafka.port.external.port}}
+      targetPort: {{.Values.kafka.port.external.port}}
+    - name: {{.Values.kafka.port.internal.name}}
+      port: {{.Values.kafka.port.internal.port}}
+      targetPort: {{.Values.kafka.port.internal.port}}

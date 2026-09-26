@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Values.kafka.bootstrap.name}}
+  namespace: {{.Values.kafka.namespace.name}}
+spec:
+  selector:
+    app: {{.Values.kafka.labels.name}}
+  ports:
+    - name: {{.Values.kafka.port.external.name}}
+      port: {{.Values.kafka.port.external.port}}
+      targetPort: {{.Values.kafka.port.external.port}}
+  type: LoadBalancer # (ClusterIP or LoadBalancer)

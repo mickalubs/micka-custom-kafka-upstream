@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{.Values.zookeeper.statefulset.name}}
+  namespace: {{.Values.kafka.namespace.name}}
+spec:
+  serviceName: {{.Values.zookeeper.headless_service.name}}
+  replicas: {{.Values.zookeeper.statefulset.replicas}}
+  selector:
+    matchLabels:
+      app: {{.Values.zookeeper.labels.name}}
+  updateStrategy:
+    type: {{.Values.zookeeper.statefulset.updateStrategy}}
+  #podManagementPolicy: OrderedReady
+  podManagementPolicy: {{.Values.zookeeper.statefulset.podManagementPolicy}}
+  template:
+    metadata:
+      labels:
+        app: {{.Values.zookeeper.labels.name}}
+        deployment: {{.Values.kafka.labels.deployment}}
+    spec:
+      {{- include "zookeeper.specs" . | nindent 6}}
+  volumeClaimTemplates:
+    - metadata:
+        name: zookeeper-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 5Gi
+    - metadata:
+        name: zookeeper-log
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 2Gi

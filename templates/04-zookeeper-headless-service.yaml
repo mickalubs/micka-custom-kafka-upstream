@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Values.zookeeper.headless_service.name}}
+  namespace: {{.Values.kafka.namespace.name}}
+  labels:
+    app: {{.Values.zookeeper.labels.name}}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app: {{.Values.zookeeper.labels.name}}
+  ports:
+    - name: client
+      port: {{.Values.zookeeper.port.client}}
+      targetPort: {{.Values.zookeeper.port.client}}
+    - name: follower
+      port: {{.Values.zookeeper.port.follower}}
+      targetPort: {{.Values.zookeeper.port.follower}}
+    - name: election
+      port: {{.Values.zookeeper.port.election}}
+      targetPort: {{.Values.zookeeper.port.election}}

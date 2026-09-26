@@ -1,0 +1,21 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{.Values.pod_disruption_budget.zookeeper.name}}
+  namespace: {{.Values.kafka.namespace.name}}
+spec:
+  minAvailable: {{.Values.pod_disruption_budget.zookeeper.specs.minAvailable}}
+  selector:
+    matchLabels:
+      app: {{.Values.zookeeper.labels.name}}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{.Values.pod_disruption_budget.kafka.name}}
+  namespace: {{.Values.kafka.namespace.name}}
+spec:
+  minAvailable: {{.Values.pod_disruption_budget.kafka.specs.minAvailable}}
+  selector:
+    matchLabels:
+      app: {{.Values.kafka.labels.name}}

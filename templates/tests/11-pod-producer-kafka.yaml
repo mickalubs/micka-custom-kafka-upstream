@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{.Values.test_pod.name}}
+  namespace: {{.Values.kafka.namespace.name}}
+  annotations:
+    "helm.sh/hook": test,post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  restartPolicy: Never
+  serviceAccountName: {{.Values.service_account.kafka.name}}
+  containers:
+  - name: {{.Values.test_pod.name}}
+    image: {{.Values.test_pod.image.name}}:{{.Values.test_pod.image.version}}
+    command:
+      - /bin/sh
+      - -c
+      - |
+        TOPIC="micka-topic"
+        BOOTSTRAP="{{.Values.kafka.bootstrap.name}}:{{.Values.kafka.port.external.port}}"
+        MSG_COUNT=3
+        ZOOK_HOST="{{.Values.zookeeper.client_service.name}}"
+        ZOOK_PORT="2181"
+
+        # Wait for Kafka to be ready
+        echo "Waiting for Kafka..."
+        until kafka-topics --bootstrap-server $BOOTSTRAP --list > /dev/null 2>&1; do
+          echo "Kafka not ready, retrying in 5s..."
+          sleep 5
+        done
+        echo "Kafka: ready"
+
+        # Wait for Zookeeper (if needed directly)
+        echo "Waiting for Zookeeper..."
+        until echo ruok | nc $ZOOK_HOST $ZOOK_PORT | grep -q imok; do
+          echo "Zookeeper not ready, retrying in 5s..."
+          sleep 5
+        done
+        echo "Zookeeper: ready"
+
+        # Create topic
+        kafka-topics --bootstrap-server $BOOTSTRAP \
+          --create --if-not-exists \
+          --topic $TOPIC \
+          --partitions 3 \
+          --replication-factor 3
+
+        # Produce
+        while [ $MSG_COUNT -gt 0 ]; do
+          echo "test-message-$MSG_COUNT" | kafka-console-producer \
+            --bootstrap-server $BOOTSTRAP \
+            --topic $TOPIC \
+            --producer-property partitioner.class=org.apache.kafka.clients.producer.RoundRobinPartitioner
+          MSG_COUNT=$((MSG_COUNT - 1))
+        done
+
+        if [ $? -ne 0 ]; then
+          echo "FAILURE: Unable to produce"
+          exit 1
+        fi
+        echo "Producer: OK"
+
+        # Consume
+        kafka-console-consumer \
+          --bootstrap-server $BOOTSTRAP \
+          --topic $TOPIC \
+          --from-beginning \
+          --max-messages 3 \
+          --timeout-ms 10000
+
+        if [ $? -ne 0 ]; then
+          echo "FAILURE: Unable to consume"
+          exit 1
+        fi
+        echo "Consumer: OK"
+
+        echo "SUCCESS"
+        exit 0
